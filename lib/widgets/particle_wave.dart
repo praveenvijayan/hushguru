@@ -192,8 +192,7 @@ class _ParticlePainter extends CustomPainter {
   void _paintWave(Canvas canvas, Size size) {
     _bands ??= _buildBands();
 
-    final breathe =
-        0.72 + 0.34 * math.sin(t * 0.55) * math.sin(t * 0.21 + 1.3);
+    final breathe = 0.72 + 0.34 * math.sin(t * 0.55) * math.sin(t * 0.21 + 1.3);
     final centerY = size.height * 0.5;
     final paint = Paint()..style = PaintingStyle.fill;
 
@@ -208,7 +207,8 @@ class _ParticlePainter extends CustomPainter {
       for (int i = 0; i <= band.n; i++) {
         final x = i * step;
         final norm = i / band.n;
-        final y = centerY +
+        final y =
+            centerY +
             size.height *
                 band.amp *
                 breathe *
@@ -225,7 +225,8 @@ class _ParticlePainter extends CustomPainter {
         final x = i * step;
         final norm = i / band.n;
         final ribbonThick = size.height * 0.12 * breathe;
-        final y = centerY +
+        final y =
+            centerY +
             size.height *
                 band.amp *
                 breathe *

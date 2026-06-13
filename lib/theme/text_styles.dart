@@ -9,22 +9,30 @@ abstract final class HgText {
     Color color = HgColors.navy,
     double? height,
     double? letterSpacing,
-  }) =>
-      GoogleFonts.jost(
-        fontSize: size,
-        fontWeight: weight,
-        color: color,
-        height: height,
-        letterSpacing: letterSpacing,
-      );
+  }) => GoogleFonts.jost(
+    fontSize: size,
+    fontWeight: weight,
+    color: color,
+    height: height,
+    letterSpacing: letterSpacing,
+  );
 
   // Display / wordmark
   static TextStyle wordmark({double size = 32, Color color = HgColors.navy}) =>
-      _jost(size: size, weight: FontWeight.w300, color: color, letterSpacing: 3.52);
+      _jost(
+        size: size,
+        weight: FontWeight.w300,
+        color: color,
+        letterSpacing: 3.52,
+      );
 
   // Eyebrow caps
-  static TextStyle eyebrow({Color color = HgColors.coral}) =>
-      _jost(size: 11, weight: FontWeight.w500, color: color, letterSpacing: 5.2);
+  static TextStyle eyebrow({Color color = HgColors.coral}) => _jost(
+    size: 11,
+    weight: FontWeight.w500,
+    color: color,
+    letterSpacing: 5.2,
+  );
 
   // Headings
   static TextStyle h1({Color color = HgColors.navy}) =>
@@ -44,8 +52,12 @@ abstract final class HgText {
       _jost(size: 13, weight: FontWeight.w300, color: color, height: 1.5);
 
   // Button
-  static TextStyle button({Color color = HgColors.cream}) =>
-      _jost(size: 15, weight: FontWeight.w400, color: color, letterSpacing: 1.02);
+  static TextStyle button({Color color = HgColors.cream}) => _jost(
+    size: 15,
+    weight: FontWeight.w400,
+    color: color,
+    letterSpacing: 1.02,
+  );
 
   // Caption
   static TextStyle caption({Color color = HgColors.navy}) =>

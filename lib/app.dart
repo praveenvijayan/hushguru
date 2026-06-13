@@ -53,8 +53,7 @@ class _AppNavigatorState extends State<_AppNavigator> {
       case _AppScreen.login:
         return LoginScreen(
           key: const ValueKey('login'),
-          onLoginSuccess: () =>
-              setState(() => _screen = _AppScreen.dashboard),
+          onLoginSuccess: () => setState(() => _screen = _AppScreen.dashboard),
         );
       case _AppScreen.dashboard:
         return const DashboardScreen(key: ValueKey('dashboard'));

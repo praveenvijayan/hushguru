@@ -25,14 +25,8 @@ class HgWordmark extends StatelessWidget {
             'hushguru',
             style: wordmarkStyle.copyWith(
               shadows: [
-                Shadow(
-                  color: color.withValues(alpha: 0.4),
-                  blurRadius: 24,
-                ),
-                Shadow(
-                  color: color.withValues(alpha: 0.2),
-                  blurRadius: 48,
-                ),
+                Shadow(color: color.withValues(alpha: 0.4), blurRadius: 24),
+                Shadow(color: color.withValues(alpha: 0.2), blurRadius: 48),
               ],
             ),
           )
