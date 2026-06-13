@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "57449042012",
+    "project_id": "hushguru-775f5",
+    "storage_bucket": "hushguru-775f5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:57449042012:android:8cd971463e214f72d35699",
+        "android_client_info": {
+          "package_name": "com.hushguru.dev"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "57449042012-rvelh4ndn78eqt9luealtjab8h46a3hm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9VLnSMQssuiH7RQbkMjWxgrq9e8rTxuY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "57449042012-rvelh4ndn78eqt9luealtjab8h46a3hm.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "57449042012-fdiuse1e74poq4kph23n44sp09u9cas3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.hushguru.dev"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
