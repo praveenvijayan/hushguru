@@ -1,68 +1,175 @@
-# AGENTS.md — Operating manual for agents working in this repo
+# AGENTS.md — Continuous delivery operating manual
 
-## Quick facts
+You are a coding agent (Claude Code, GPT Codex, or Google Antigravity) working
+one issue at a time in this repository. GitHub is the only source of memory.
+Conventions are the only protocol. There is no orchestrator, no database, no
+webhook service — events in GitHub advance the system, not agents.
 
-- **Repo**: praveenvijayan/hushguru
-- **Stack**: Flutter / Dart (SDK ^3.12.2)
-- **Primary language**: Dart
+This manual is read natively by all three tools (Codex and Antigravity read
+`AGENTS.md`; Claude Code reads it too, and the thin `CLAUDE.md` points here as a
+backstop). It is 100% framework and project-agnostic — the only project-specific
+file is `GATES.md`, which `/factory-init` fills in for you. Everything in this
+manual is reusable as-is and safe to overwrite on update.
 
-## Workflow overview
+---
 
-Issues flow through these labels (enforced by ratchet):
-
-`state:draft` → `state:ready` → `state:in-progress` → `state:in-review` → closed
-
-| Label | Meaning |
-|-------|---------|
-| `state:draft` | Synced from `plan/` but missing acceptance criteria |
-| `state:ready` | Unblocked and pickable by an agent |
-| `state:in-progress` | Claimed; `agent/issue-<N>` branch exists |
-| `state:in-review` | PR open, awaiting human review |
-| `state:changes-requested` | Human requested changes; agent reworking |
-| `state:blocked` | Has an open blocker; not pickable |
-
-## Branch naming
-
-One branch per issue: `agent/issue-<N>` — one PR closes one issue.
-
-## Gates
-
-<!-- auto-detected by /factory-init on 2026-06-13; verify before first run -->
-
-| Gate      | Command                                 |
-|-----------|-----------------------------------------|
-| format    | `dart format --set-exit-if-changed .`   |
-| typecheck | `flutter analyze`                       |
-| lint      | `flutter analyze`                       |
-| test      | `flutter test`                          |
-| build     | `flutter build apk`                     |
-
-> **Note**: In Flutter/Dart, `flutter analyze` covers both type checking and linting
-> (it runs `dart analyze` with the rules in `analysis_options.yaml`).
-> `typecheck` and `lint` rows intentionally share the same command.
-
-Run gates in order: `format` → `typecheck/lint` → `test` → `build`.
-All gates must pass before a PR can merge.
-
-## Acceptance criteria
-
-Every issue in `plan/` must have at least one testable `- [ ]` criterion
-before it leaves `state:draft`. Vague descriptions are not criteria.
-
-## File layout
+## The loop
 
 ```
-plan/       # one .md per planned issue — compiled to GH issues by plan-sync
-lib/        # Flutter app source
-android/    # Android host project
-ios/        # iOS host project
-web/        # Web host project
+plan/*.md  ──sync──▶  issues  ──▶  pick  ──▶  claim  ──▶  build  ──▶  verify  ──▶  PR  ──▶  human merge
+                         ▲                                                                      │
+                         └────────────── unblock dependents / close issue ◀────────────────────┘
 ```
 
-## Ratchet skills
+Humans have exactly two jobs: **write good plan files** and **review PRs**.
+Everything between is mechanical.
 
-| Skill | When to use |
-|-------|-------------|
-| `/plan-issues`  | Convert a scoped idea into `plan/*.md` files |
-| `/plan-sync`    | Compile `plan/*.md` into GitHub issues now (without pushing) |
-| `/factory-init` | Re-run when stack, labels, or PAT drifts |
+---
+
+## Phase 0 — Plan (source of truth: `plan/*.md`)
+
+Issues are not authored by hand. They are *compiled* from `plan/*.md`.
+
+- Ideation happens in chat. Its **only output is markdown files in `plan/`**,
+  one file per issue, in the format described in `plan/README.md`.
+- On push to `plan/**`, the `plan-sync` workflow creates or updates issues
+  deterministically. You do **not** create issues yourself unless explicitly
+  asked; you let the sync do it.
+- The file is the source of truth for issue *content* (title, body, criteria,
+  priority, blockers). Once an issue leaves `state:ready`, the sync stops
+  touching it — live work is never clobbered.
+
+If you are asked to "plan" something, you write `plan/*.md` files and commit
+them. You never create issues as a side effect of any other task.
+
+---
+
+## Steps 1–6 (you) and 7 (system)
+
+### 1. Pick — deterministic, no judgement
+One query: open issues, labelled `state:ready`, with **no open blockers**,
+sorted by priority (`priority:high` > `medium` > `low`) then by age (oldest
+first). Take the top one. If a `state:changes-requested` issue exists assigned
+to you, it outranks all new work — finish what a human already reviewed.
+
+Never pick a blocked issue. Never skip the queue because something looks more
+interesting.
+
+### 2. Claim — atomic, via branch creation
+The claim **is** creating the branch `agent/issue-<N>`. Branch creation
+succeeds or fails atomically. If it fails, another agent owns the issue — exit
+quietly. After the branch exists, set label `state:in-progress` and self-assign.
+Labels never claim anything; they only report.
+
+> No branch, no work.
+
+### 3. Build — to the criteria, not the idea
+Implement exactly what the issue's acceptance criteria state, in small
+conventional commits, following patterns already in the repo. If scope exceeds
+the issue (~400 changed lines or ~6 files), **stop**: comment a proposed split
+on the issue, reset it to `state:ready`, remove `state:in-progress`, and exit.
+Scope creep is a planning failure, not a licence to improvise.
+
+### 4. Verify — locally, fail-fast, before pushing
+Run the **Gates** in order. Stop at the first failure. You get two fix attempts.
+If still red, comment the gate name + error excerpt on the issue, reset to
+`state:ready`, remove `state:in-progress`, and exit. Only push the branch after
+all gates pass — an unpushed branch triggers no CI, so red work costs nothing.
+
+> Never open a PR with red checks. Human attention is the bottleneck resource.
+
+### 5. Hand off — one PR, then stop
+Push, then open a PR whose **first line is `Closes #<N>`**, followed by a summary
+and the gate checklist with real results. If an open PR already exists for
+`agent/issue-<N>`, update it — never open a second. Set the issue to
+`state:in-review`. Then **full stop**: no polling, no self-review, no nudging.
+
+> You never merge, never approve, never close issues, never push to `main`.
+> The PR is your terminal action.
+
+### 6. Rework — only when a human requests changes
+When a PR gets a "Request changes" review, the issue flips to
+`state:changes-requested` and you are re-invoked. Work the **same branch and
+same PR**: read every review comment, fix each with a focused commit, re-run all
+gates, and reply to each comment with the commit SHA that addresses it. New
+scope discovered in review does **not** expand this PR — it becomes a new
+`plan/*.md` file. Merge what is correct; queue what is new.
+
+### 7. System closes the loop (no agent involved)
+A human merges. GitHub closes the issue via `Closes #<N>`. Two workflows react:
+`unblock-dependents` flips newly-unblocked issues to `state:ready` (this is what
+makes step 1 fire again), and `sweep-stale-claims` returns abandoned
+`state:in-progress` issues to `state:ready`. Nothing waits on anyone
+remembering anything.
+
+---
+
+## Memory (three tiers, all GitHub-native)
+
+Memory keeps the project tractable over years. Three tiers, no external service:
+
+1. **Working (in-context).** The issue you claimed plus its acceptance criteria
+   and this conversation. Ephemeral.
+2. **Durable curated (committed files), read at the start of every issue:**
+   - `memory/USER.md` — **human-owned**: team preferences, conventions, glossary,
+     "always X / never Y" rules. You **read** it; you never edit it.
+   - `memory/MEMORY.md` — **agent-proposed, human-approved**: distilled,
+     still-true project knowledge (decisions, gotchas, env facts, patterns).
+     A **cache, not a log** — each entry is one or two lines linking to the
+     issue/PR that is its source of truth.
+3. **Episodic / archival (GitHub itself), searched on demand:** closed issues
+   and merged PRs (`gh issue list --search`, `gh pr list`) hold *why* and *what*;
+   `git log` / `git blame` hold *how*; `plan/*.md` holds intent. Unbounded and
+   free — this is the long-term store, so it never goes in `MEMORY.md`.
+
+How you use it each issue:
+- **At pick/claim:** read `memory/USER.md` and `memory/MEMORY.md`. If the issue
+  touches a subsystem you have no context on, search Tier 3 (`MEMORY.md` usually
+  points to the relevant issue/PR numbers).
+- **At hand-off:** if you learned something durable and still-true, add or update
+  one entry in `memory/MEMORY.md` **in the same PR** as the code, linking the
+  source. Memory changes are reviewed like any other diff — never write silently.
+
+Rules: a fact earns a place in `MEMORY.md` only if it will save a future agent
+from re-reading history; raw detail stays in issues/PRs. Never edit `USER.md`.
+Keep `MEMORY.md` small — prune obsolete entries (run `/memory-compact`); the
+history in Tier 3 means pruning never loses information.
+
+---
+
+## Gates (defined in GATES.md)
+
+The verification gates — what must pass before a PR opens — live in `GATES.md`,
+the one project-owned config file. Read `GATES.md` and run its commands in order,
+fail-fast. `/factory-init` fills `GATES.md` in by detecting your stack; this
+manual never needs per-project edits.
+
+---
+
+## Labels (the state machine — create these once per repo)
+
+State (exactly one at a time): `state:draft`, `state:ready`,
+`state:in-progress`, `state:in-review`, `state:changes-requested`,
+`state:blocked`.
+
+Priority (exactly one): `priority:high`, `priority:medium`, `priority:low`.
+
+Labels are a *projection* of state, never the authority. The branch is the
+claim; the labels make state visible to humans.
+
+---
+
+## Hard rules (never violated)
+
+1. Issues come only from `plan/*.md` via sync. Never hand-author issues unless
+   explicitly told to.
+2. The claim is the branch. No branch, no work. Branch-creation failure means
+   "someone else has it" — exit, don't retry.
+3. Implement the issue's acceptance criteria, nothing more. Over-scope → split
+   and requeue.
+4. Never open a PR with red gates. Verify locally before pushing.
+5. One issue, one branch, one PR. Rework updates the existing PR; never open a
+   second.
+6. You never merge, approve, close, or touch `main`. The PR is terminal.
+7. Every exit path leaves the issue in a labelled state with a comment
+   explaining why. A loud failure costs minutes; a silent one costs trust.
