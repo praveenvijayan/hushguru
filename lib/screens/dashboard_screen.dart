@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../services/permission_service.dart';
 import '../theme/colors.dart';
 import '../theme/text_styles.dart';
 import '../widgets/ambient_background.dart';
@@ -20,6 +22,20 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   _DashboardOverlay _overlay = _DashboardOverlay.none;
   bool _menuOpen = false;
+  bool _micDenied = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkMicPermission();
+  }
+
+  Future<void> _checkMicPermission() async {
+    final granted = await PermissionService.requestMicrophone();
+    if (!granted && mounted) {
+      setState(() => _micDenied = true);
+    }
+  }
 
   static const _statusLines = [
     'I am listening…',
@@ -80,11 +96,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   const Spacer(),
 
+                  // Microphone denied nudge
+                  if (_micDenied)
+                    _MicNudge(
+                      onTap: () async {
+                        await openAppSettings();
+                        if (mounted) {
+                          final granted =
+                              await PermissionService.requestMicrophone();
+                          if (granted && mounted) {
+                            setState(() => _micDenied = false);
+                          }
+                        }
+                      },
+                    ),
+
                   // Bottom composer bar
                   _TypeComposer(
                     onSend: () => setState(
-                      () => _statusIdx =
-                          (_statusIdx + 1) % _statusLines.length,
+                      () => _statusIdx = (_statusIdx + 1) % _statusLines.length,
                     ),
                   ),
 
@@ -276,10 +306,7 @@ class _DashboardMenu extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ...items.map(
-              (item) => _MenuItem(
-                label: item.$1,
-                onTap: item.$2 ?? () {},
-              ),
+              (item) => _MenuItem(label: item.$1, onTap: item.$2 ?? () {}),
             ),
             const Divider(height: 1, color: Color(0x1A203C6B)),
             _MenuItem(
@@ -294,6 +321,40 @@ class _DashboardMenu extends StatelessWidget {
   }
 }
 
+// ─── Mic permission nudge ────────────────────────────────────────────────────
+
+class _MicNudge extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _MicNudge({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: HgColors.coral.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: HgColors.coral.withValues(alpha: 0.35),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          'Microphone access is needed to hear you — tap to open settings.',
+          style: HgText.body(color: HgColors.cream),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Menu item ───────────────────────────────────────────────────────────────
+
 class _MenuItem extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
@@ -307,10 +368,7 @@ class _MenuItem extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
-        child: Text(
-          label,
-          style: HgText.body(color: color ?? HgColors.navy),
-        ),
+        child: Text(label, style: HgText.body(color: color ?? HgColors.navy)),
       ),
     );
   }

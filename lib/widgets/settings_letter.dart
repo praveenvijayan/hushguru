@@ -51,15 +51,11 @@ class SettingsLetter extends StatelessWidget {
         children: [
           _plain('Dear '),
           _tappable(displayName, onChangeName),
-          _plain(
-            ',\n\nYour practice is set to ',
-          ),
+          _plain(',\n\nYour practice is set to '),
           _tappable(practiceLevel, onChangeLevel),
           _plain(' level with sessions lasting '),
           _tappable(sessionDuration, onChangeDuration),
-          _plain(
-            '. We send your reflections to ',
-          ),
+          _plain('. We send your reflections to '),
           _tappable(email, onChangeEmail),
           _plain(
             '.\n\nBreath by breath, we are building something meaningful together.',

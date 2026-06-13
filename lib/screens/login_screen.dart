@@ -23,12 +23,7 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 52),
 
               // Wordmark
-              Center(
-                child: HgWordmark(
-                  size: 17,
-                  color: HgColors.navy,
-                ),
-              ),
+              Center(child: HgWordmark(size: 17, color: HgColors.navy)),
 
               const SizedBox(height: 48),
 
@@ -69,10 +64,7 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 28),
 
               // Sign in button
-              HgButton(
-                label: 'Sign in',
-                onTap: onLoginSuccess,
-              ),
+              HgButton(label: 'Sign in', onTap: onLoginSuccess),
 
               const SizedBox(height: 28),
 
@@ -82,7 +74,10 @@ class LoginScreen extends StatelessWidget {
                   Expanded(child: Divider(color: HgColors.ink12)),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text('or', style: HgText.caption(color: HgColors.ink40)),
+                    child: Text(
+                      'or',
+                      style: HgText.caption(color: HgColors.ink40),
+                    ),
                   ),
                   Expanded(child: Divider(color: HgColors.ink12)),
                 ],

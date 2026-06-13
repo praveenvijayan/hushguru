@@ -65,12 +65,17 @@ class _AsanaPlayerState extends State<AsanaPlayer> {
         // Asana label
         Text('Vrikshasana', style: HgText.h2()),
         const SizedBox(height: 4),
-        Text('Tree Pose  ·  Hold 60 s', style: HgText.bodySmall(color: HgColors.ink60)),
+        Text(
+          'Tree Pose  ·  Hold 60 s',
+          style: HgText.bodySmall(color: HgColors.ink60),
+        ),
 
         const SizedBox(height: 20),
 
         // Progress bar
-        _WarmProgressBar(value: _initialized ? _ctrl.value.position.inSeconds / 60.0 : 0),
+        _WarmProgressBar(
+          value: _initialized ? _ctrl.value.position.inSeconds / 60.0 : 0,
+        ),
 
         const SizedBox(height: 20),
 
@@ -104,10 +109,7 @@ class _AsanaPlayerState extends State<AsanaPlayer> {
               ),
             ),
             const SizedBox(width: 24),
-            _ControlBtn(
-              icon: Icons.skip_next_rounded,
-              onTap: () {},
-            ),
+            _ControlBtn(icon: Icons.skip_next_rounded, onTap: () {}),
           ],
         ),
       ],

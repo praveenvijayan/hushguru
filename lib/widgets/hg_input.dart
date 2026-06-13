@@ -59,8 +59,10 @@ class _HgInputState extends State<HgInput> {
         ),
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.7),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }

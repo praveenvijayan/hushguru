@@ -19,12 +19,29 @@ class AmbientBackground extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         // Base sunrise gradient
-        DecoratedBox(decoration: const BoxDecoration(gradient: HgColors.sunriseGradient)),
+        DecoratedBox(
+          decoration: const BoxDecoration(gradient: HgColors.sunriseGradient),
+        ),
 
         // Blur orbs
-        _BlurOrb(left: -80, top: -60, size: 320, color: const Color(0xFFF5D6A0).withValues(alpha: 0.45)),
-        _BlurOrb(right: -60, top: 180, size: 260, color: const Color(0xFFD4778A).withValues(alpha: 0.35)),
-        _BlurOrb(left: 40, bottom: -80, size: 300, color: const Color(0xFF8B6B9E).withValues(alpha: 0.28)),
+        _BlurOrb(
+          left: -80,
+          top: -60,
+          size: 320,
+          color: const Color(0xFFF5D6A0).withValues(alpha: 0.45),
+        ),
+        _BlurOrb(
+          right: -60,
+          top: 180,
+          size: 260,
+          color: const Color(0xFFD4778A).withValues(alpha: 0.35),
+        ),
+        _BlurOrb(
+          left: 40,
+          bottom: -80,
+          size: 300,
+          color: const Color(0xFF8B6B9E).withValues(alpha: 0.28),
+        ),
 
         // Haze overlay
         DecoratedBox(
@@ -94,10 +111,7 @@ class _BlurOrb extends StatelessWidget {
         child: Container(
           width: size,
           height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color,
-          ),
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
         ),
       ),
     );
