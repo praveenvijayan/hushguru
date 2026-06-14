@@ -52,7 +52,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _profileStream = UserProfileService.stream(user.uid);
-      UserProfileService.ensureProfile(user);
+      _syncProfile(user);
+    }
+  }
+
+  Future<void> _syncProfile(User user) async {
+    final synced = await UserProfileService.ensureProfile(user);
+    if (!synced && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to connect — please check your connection.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
     }
   }
 
