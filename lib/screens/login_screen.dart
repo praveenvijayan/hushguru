@@ -44,7 +44,14 @@ class _LoginScreenState extends State<LoginScreen> {
         password: password,
       );
       if (cred.user != null) {
-        await UserProfileService.ensureProfile(cred.user!);
+        final synced = await UserProfileService.ensureProfile(cred.user!);
+        if (!synced && mounted) {
+          setState(
+            () => _error =
+                'Unable to connect — your profile will sync when '
+                'the connection is restored.',
+          );
+        }
       }
       // authStateChanges in app.dart handles navigation
     } on FirebaseAuthException catch (e) {

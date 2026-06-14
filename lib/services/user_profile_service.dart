@@ -1,17 +1,44 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/user_profile.dart';
 
+/// Retries [op] up to [maxAttempts] times when Firestore returns `unavailable`.
+/// Returns true on success; false if all attempts fail. Non-unavailable
+/// FirebaseExceptions are rethrown immediately.
+@visibleForTesting
+Future<bool> withFirestoreRetry(
+  Future<void> Function() op, {
+  int maxAttempts = 2,
+  Duration backoff = const Duration(milliseconds: 500),
+}) async {
+  for (var attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      await op();
+      return true;
+    } on FirebaseException catch (e) {
+      if (e.code != 'unavailable') rethrow;
+      debugPrint(
+        '[UserProfileService] Firestore unavailable'
+        ' (attempt ${attempt + 1}/$maxAttempts): ${e.message}',
+      );
+      if (attempt < maxAttempts - 1) await Future.delayed(backoff);
+    }
+  }
+  return false;
+}
+
 class UserProfileService {
-  static final _col = FirebaseFirestore.instance
+  static CollectionReference<UserProfile> get _col => FirebaseFirestore.instance
       .collection('users')
       .withConverter<UserProfile>(
         fromFirestore: (snap, _) => UserProfile.fromFirestore(snap),
         toFirestore: (profile, _) => profile.toMap(),
       );
 
-  // Creates a profile document on first sign-in; no-op if it already exists.
-  static Future<void> ensureProfile(User user) async {
+  /// Ensures a profile document exists for [user].
+  /// Returns true on success; false if Firestore is unreachable after retries.
+  static Future<bool> ensureProfile(User user) => withFirestoreRetry(() async {
     final ref = _col.doc(user.uid);
     final snap = await ref.get();
     if (!snap.exists) {
@@ -26,7 +53,7 @@ class UserProfileService {
         ),
       );
     }
-  }
+  });
 
   static Stream<UserProfile?> stream(String uid) =>
       _col.doc(uid).snapshots().map((s) => s.data());
