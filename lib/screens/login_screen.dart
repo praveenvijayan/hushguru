@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../theme/colors.dart';
 import '../theme/text_styles.dart';
@@ -5,10 +6,49 @@ import '../widgets/hg_button.dart';
 import '../widgets/hg_input.dart';
 import '../widgets/wordmark.dart';
 
-class LoginScreen extends StatelessWidget {
-  final VoidCallback? onLoginSuccess;
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
-  const LoginScreen({super.key, this.onLoginSuccess});
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _signIn() async {
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text;
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Please enter your email and password.');
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      // authStateChanges in app.dart handles navigation
+    } on FirebaseAuthException catch (e) {
+      setState(() => _error = e.message ?? 'Sign-in failed.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,12 +80,17 @@ class LoginScreen extends StatelessWidget {
               // Email field
               HgInput(
                 label: 'Email address',
+                controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
 
               // Password field
-              const HgInput(label: 'Password', obscure: true),
+              HgInput(
+                label: 'Password',
+                controller: _passwordCtrl,
+                obscure: true,
+              ),
 
               const SizedBox(height: 8),
 
@@ -61,10 +106,18 @@ class LoginScreen extends StatelessWidget {
                 ),
               ),
 
+              if (_error != null) ...[
+                const SizedBox(height: 16),
+                Text(_error!, style: HgText.caption(color: HgColors.coral)),
+              ],
+
               const SizedBox(height: 28),
 
               // Sign in button
-              HgButton(label: 'Sign in', onTap: onLoginSuccess),
+              HgButton(
+                label: _loading ? 'Signing in…' : 'Sign in',
+                onTap: _loading ? null : _signIn,
+              ),
 
               const SizedBox(height: 28),
 

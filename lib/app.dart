@@ -1,11 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'theme/theme.dart';
-
-enum _AppScreen { splash, login, dashboard }
 
 class HushGuruApp extends StatelessWidget {
   const HushGuruApp({super.key});
@@ -29,7 +28,7 @@ class _AppNavigator extends StatefulWidget {
 }
 
 class _AppNavigatorState extends State<_AppNavigator> {
-  _AppScreen _screen = _AppScreen.splash;
+  bool _splashDone = false;
 
   @override
   void initState() {
@@ -40,31 +39,27 @@ class _AppNavigatorState extends State<_AppNavigator> {
         statusBarIconBrightness: Brightness.light,
       ),
     );
-    // Auto-advance from splash after 2.5 s
     Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) setState(() => _screen = _AppScreen.login);
+      if (mounted) setState(() => _splashDone = true);
     });
-  }
-
-  Widget _buildScreen() {
-    switch (_screen) {
-      case _AppScreen.splash:
-        return const SplashScreen(key: ValueKey('splash'));
-      case _AppScreen.login:
-        return LoginScreen(
-          key: const ValueKey('login'),
-          onLoginSuccess: () => setState(() => _screen = _AppScreen.dashboard),
-        );
-      case _AppScreen.dashboard:
-        return const DashboardScreen(key: ValueKey('dashboard'));
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 500),
-      child: _buildScreen(),
+    if (!_splashDone) {
+      return const SplashScreen(key: ValueKey('splash'));
+    }
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SplashScreen(key: ValueKey('auth-check'));
+        }
+        if (snapshot.data != null) {
+          return const DashboardScreen(key: ValueKey('dashboard'));
+        }
+        return const LoginScreen(key: ValueKey('login'));
+      },
     );
   }
 }
