@@ -1,13 +1,13 @@
 ---
 title: "Store and load user profile from Firestore"
 priority: medium
-blocked_by:
-  - 0006-auth-state-persistence
 ---
 
 On first sign-in create a Firestore document at `users/{uid}` with display name,
 email, practice level, and session duration. Read it back to populate
 SettingsLetter.
+
+## Acceptance criteria
 
 - [ ] User document created on first successful sign-in
 - [ ] SettingsLetter shows live values from Firestore (not hardcoded)

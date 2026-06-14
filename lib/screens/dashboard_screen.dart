@@ -2,12 +2,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/permission_service.dart';
+import '../services/voice_service.dart';
 import '../theme/colors.dart';
 import '../theme/text_styles.dart';
 import '../widgets/ambient_background.dart';
 import '../widgets/asana_player.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/particle_wave.dart';
+import '../widgets/recording_pulse.dart';
 import '../widgets/settings_letter.dart';
 import '../widgets/wordmark.dart';
 
@@ -24,6 +26,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   _DashboardOverlay _overlay = _DashboardOverlay.none;
   bool _menuOpen = false;
   bool _micDenied = false;
+  bool _isRecording = false;
+  String? _transcription;
+  final _voiceService = VoiceService();
 
   @override
   void initState() {
@@ -36,6 +41,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (!granted && mounted) {
       setState(() => _micDenied = true);
     }
+  }
+
+  void _startRecording() {
+    if (_micDenied) return;
+    setState(() {
+      _isRecording = true;
+      _transcription = null;
+    });
+    _voiceService.startListening(
+      onResult: (text) {
+        if (mounted) setState(() => _transcription = text);
+      },
+    );
+  }
+
+  Future<void> _stopRecording() async {
+    await _voiceService.stopListening();
+    if (mounted) setState(() => _isRecording = false);
   }
 
   static const _statusLines = [
@@ -86,12 +109,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 600),
-                      child: Text(
-                        _statusLines[_statusIdx],
-                        key: ValueKey(_statusIdx),
-                        style: HgText.status(),
-                        textAlign: TextAlign.center,
-                      ),
+                      child: _isRecording
+                          ? Row(
+                              key: const ValueKey('recording'),
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const RecordingPulse(),
+                                const SizedBox(width: 10),
+                                Text('Listening…', style: HgText.status()),
+                              ],
+                            )
+                          : Text(
+                              _transcription ?? _statusLines[_statusIdx],
+                              key: ValueKey(_transcription ?? _statusIdx),
+                              style: HgText.status(),
+                              textAlign: TextAlign.center,
+                            ),
                     ),
                   ),
 
@@ -117,6 +151,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onSend: () => setState(
                       () => _statusIdx = (_statusIdx + 1) % _statusLines.length,
                     ),
+                    onRecordStart: _startRecording,
+                    onRecordEnd: _stopRecording,
+                    isRecording: _isRecording,
                   ),
 
                   const SizedBox(height: 16),
@@ -172,8 +209,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 class _TypeComposer extends StatefulWidget {
   final VoidCallback onSend;
+  final VoidCallback onRecordStart;
+  final VoidCallback onRecordEnd;
+  final bool isRecording;
 
-  const _TypeComposer({required this.onSend});
+  const _TypeComposer({
+    required this.onSend,
+    required this.onRecordStart,
+    required this.onRecordEnd,
+    required this.isRecording,
+  });
 
   @override
   State<_TypeComposer> createState() => _TypeComposerState();
@@ -197,9 +242,28 @@ class _TypeComposerState extends State<_TypeComposer> {
         child: Container(
           height: 52,
           color: Colors.white.withValues(alpha: 0.15),
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
+              GestureDetector(
+                onTapDown: (_) => widget.onRecordStart(),
+                onTapUp: (_) => widget.onRecordEnd(),
+                onTapCancel: widget.onRecordEnd,
+                child: SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: Center(
+                    child: widget.isRecording
+                        ? const RecordingPulse(size: 10)
+                        : Icon(
+                            Icons.mic_none_rounded,
+                            color: HgColors.cream.withValues(alpha: 0.7),
+                            size: 20,
+                          ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: TextField(
                   controller: _ctrl,
