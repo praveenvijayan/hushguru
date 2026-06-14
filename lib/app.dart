@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'screens/splash_screen.dart';
+import 'services/user_profile_service.dart';
 import 'theme/theme.dart';
 
 class HushGuruApp extends StatelessWidget {
@@ -62,7 +64,22 @@ class _AppNavigatorState extends State<AppNavigator> {
           return const SplashScreen(key: ValueKey('auth-check'));
         }
         if (snapshot.data != null) {
-          return const DashboardScreen(key: ValueKey('dashboard'));
+          final user = snapshot.data!;
+          return StreamBuilder(
+            stream: UserProfileService.stream(user.uid),
+            builder: (context, profileSnap) {
+              if (profileSnap.connectionState == ConnectionState.waiting) {
+                return const SplashScreen(key: ValueKey('profile-check'));
+              }
+              if (profileSnap.data == null) {
+                return OnboardingScreen(
+                  key: const ValueKey('onboarding'),
+                  user: user,
+                );
+              }
+              return const DashboardScreen(key: ValueKey('dashboard'));
+            },
+          );
         }
         return const LoginScreen(key: ValueKey('login'));
       },

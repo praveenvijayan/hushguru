@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../services/user_profile_service.dart';
 import '../theme/colors.dart';
 import '../theme/text_styles.dart';
 import '../widgets/hg_button.dart';
@@ -39,21 +38,12 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
-      if (cred.user != null) {
-        final synced = await UserProfileService.ensureProfile(cred.user!);
-        if (!synced && mounted) {
-          setState(
-            () => _error =
-                'Unable to connect — your profile will sync when '
-                'the connection is restored.',
-          );
-        }
-      }
-      // authStateChanges in app.dart handles navigation
+      // authStateChanges in app.dart handles navigation;
+      // profile creation happens in OnboardingScreen for new users.
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message ?? 'Sign-in failed.');
     } finally {
