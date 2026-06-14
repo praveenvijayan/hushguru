@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../services/user_profile_service.dart';
 import '../theme/colors.dart';
 import '../theme/text_styles.dart';
 import '../widgets/hg_button.dart';
@@ -38,10 +39,13 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
+      if (cred.user != null) {
+        await UserProfileService.ensureProfile(cred.user!);
+      }
       // authStateChanges in app.dart handles navigation
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message ?? 'Sign-in failed.');
