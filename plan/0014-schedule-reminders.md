@@ -8,6 +8,8 @@ blocked_by:
 Use FCM to send a daily push notification at the user's preferred practice time.
 The reminder deep-links into Dashboard.
 
+## Acceptance criteria
+
 - [ ] FCM token stored in `users/{uid}.fcmToken` on first launch
 - [ ] Cloud Function `dailyReminder` triggered at user's local practice time
 - [ ] Tapping the notification opens the app at the Dashboard screen
