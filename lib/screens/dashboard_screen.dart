@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../services/claude_service.dart';
 import '../services/permission_service.dart';
+import '../services/tts_service.dart';
 import '../services/voice_service.dart';
 import '../theme/colors.dart';
 import '../theme/text_styles.dart';
@@ -27,13 +31,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _menuOpen = false;
   bool _micDenied = false;
   bool _isRecording = false;
+  bool _isResponding = false;
   String? _transcription;
+  String _responseBuffer = '';
+  String _ttsBuffer = '';
+  StreamSubscription<String>? _guideSubscription;
+
   final _voiceService = VoiceService();
+  final _claudeService = ClaudeService();
+  final _ttsService = TtsService();
 
   @override
   void initState() {
     super.initState();
     _checkMicPermission();
+    _ttsService.init();
+  }
+
+  @override
+  void dispose() {
+    _guideSubscription?.cancel();
+    _ttsService.stop();
+    super.dispose();
   }
 
   Future<void> _checkMicPermission() async {
@@ -58,7 +77,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _stopRecording() async {
     await _voiceService.stopListening();
-    if (mounted) setState(() => _isRecording = false);
+    if (!mounted) return;
+    setState(() => _isRecording = false);
+    final text = _transcription;
+    if (text != null && text.trim().isNotEmpty) _sendToGuide(text);
+  }
+
+  void _sendToGuide(String text) {
+    if (text.trim().isEmpty) return;
+    _guideSubscription?.cancel();
+    setState(() {
+      _isResponding = true;
+      _responseBuffer = '';
+      _transcription = null;
+    });
+    _ttsService.stop();
+    _ttsBuffer = '';
+
+    _guideSubscription = _claudeService
+        .stream(userMessage: text)
+        .listen(
+          (chunk) {
+            if (!mounted) return;
+            setState(() => _responseBuffer += chunk);
+            _ttsBuffer += chunk;
+            final match = RegExp(r'^(.*[.!?])\s*').firstMatch(_ttsBuffer);
+            if (match != null) {
+              final sentence = match.group(1)!.trim();
+              if (sentence.isNotEmpty) _ttsService.speak(sentence);
+              _ttsBuffer = _ttsBuffer.substring(match.end);
+            }
+          },
+          onDone: () {
+            if (!mounted) return;
+            setState(() => _isResponding = false);
+            final remaining = _ttsBuffer.trim();
+            if (remaining.isNotEmpty) {
+              _ttsService.speak(remaining);
+              _ttsBuffer = '';
+            }
+          },
+          onError: (_) {
+            if (mounted) setState(() => _isResponding = false);
+          },
+          cancelOnError: true,
+        );
   }
 
   static const _statusLines = [
@@ -68,7 +131,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     'Let your body soften.',
     'We begin in stillness.',
   ];
-  int _statusIdx = 0;
+  final int _statusIdx = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -121,8 +184,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ],
                             )
                           : Text(
-                              _transcription ?? _statusLines[_statusIdx],
-                              key: ValueKey(_transcription ?? _statusIdx),
+                              _isResponding
+                                  ? (_responseBuffer.isEmpty
+                                        ? '…'
+                                        : _responseBuffer)
+                                  : (_transcription ??
+                                        _statusLines[_statusIdx]),
+                              key: ValueKey(
+                                _isResponding
+                                    ? 'response'
+                                    : (_transcription ?? _statusIdx),
+                              ),
                               style: HgText.status(),
                               textAlign: TextAlign.center,
                             ),
@@ -148,9 +220,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                   // Bottom composer bar
                   _TypeComposer(
-                    onSend: () => setState(
-                      () => _statusIdx = (_statusIdx + 1) % _statusLines.length,
-                    ),
+                    onSend: _sendToGuide,
                     onRecordStart: _startRecording,
                     onRecordEnd: _stopRecording,
                     isRecording: _isRecording,
@@ -208,7 +278,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 // ─── Type composer ───────────────────────────────────────────────────────────
 
 class _TypeComposer extends StatefulWidget {
-  final VoidCallback onSend;
+  final void Function(String) onSend;
   final VoidCallback onRecordStart;
   final VoidCallback onRecordEnd;
   final bool isRecording;
@@ -284,8 +354,11 @@ class _TypeComposerState extends State<_TypeComposer> {
               ),
               GestureDetector(
                 onTap: () {
-                  widget.onSend();
-                  _ctrl.clear();
+                  final text = _ctrl.text.trim();
+                  if (text.isNotEmpty) {
+                    widget.onSend(text);
+                    _ctrl.clear();
+                  }
                 },
                 child: Icon(
                   Icons.arrow_upward_rounded,
