@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import '../models/user_profile.dart';
 import '../services/claude_service.dart';
 import '../services/permission_service.dart';
 import '../services/tts_service.dart';
+import '../services/user_profile_service.dart';
 import '../services/voice_service.dart';
 import '../theme/colors.dart';
 import '../theme/text_styles.dart';
@@ -36,6 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _responseBuffer = '';
   String _ttsBuffer = '';
   StreamSubscription<String>? _guideSubscription;
+  Stream<UserProfile?>? _profileStream;
 
   final _voiceService = VoiceService();
   final _claudeService = ClaudeService();
@@ -46,6 +49,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _checkMicPermission();
     _ttsService.init();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      _profileStream = UserProfileService.stream(user.uid);
+      UserProfileService.ensureProfile(user);
+    }
   }
 
   @override
@@ -53,6 +61,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _guideSubscription?.cancel();
     _ttsService.stop();
     super.dispose();
+  }
+
+  Future<void> _editField(
+    BuildContext context,
+    String label,
+    String current,
+    String firestoreKey,
+  ) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final ctrl = TextEditingController(text: current);
+    final saved = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(label, style: HgText.body(color: HgColors.navy)),
+        backgroundColor: HgColors.shell,
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: HgText.body(color: HgColors.navy),
+          cursorColor: HgColors.coral,
+          decoration: const InputDecoration(border: UnderlineInputBorder()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel', style: HgText.caption(color: HgColors.ink60)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: Text('Save', style: HgText.caption(color: HgColors.coral)),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (saved != null && saved.isNotEmpty) {
+      await UserProfileService.updateField(uid, firestoreKey, saved);
+    }
+  }
+
+  Future<void> _editLevel(BuildContext context, String current) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    const levels = ['beginner', 'intermediate', 'advanced'];
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text('Practice level', style: HgText.body(color: HgColors.navy)),
+        backgroundColor: HgColors.shell,
+        children: levels
+            .map(
+              (l) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(ctx, l),
+                child: Text(
+                  l,
+                  style: HgText.body(
+                    color: l == current ? HgColors.coral : HgColors.navy,
+                  ),
+                ),
+              ),
+            )
+            .toList(),
+      ),
+    );
+    if (selected != null && selected != current) {
+      await UserProfileService.updateField(uid, 'practiceLevel', selected);
+    }
   }
 
   Future<void> _checkMicPermission() async {
@@ -235,14 +311,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _OverlaySheet(
                   onClose: () =>
                       setState(() => _overlay = _DashboardOverlay.none),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Your practice', style: HgText.eyebrow()),
-                      const SizedBox(height: 16),
-                      const SettingsLetter(),
-                    ],
+                  child: StreamBuilder<UserProfile?>(
+                    stream: _profileStream,
+                    builder: (context, snap) {
+                      final profile = snap.data;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Your practice', style: HgText.eyebrow()),
+                          const SizedBox(height: 16),
+                          if (profile == null)
+                            const Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(vertical: 12),
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          else
+                            SettingsLetter(
+                              displayName: profile.displayName,
+                              email: profile.email,
+                              practiceLevel: profile.practiceLevel,
+                              sessionDuration: profile.sessionDuration,
+                              onChangeName: () => _editField(
+                                context,
+                                'Name',
+                                profile.displayName,
+                                'displayName',
+                              ),
+                              onChangeEmail: () => _editField(
+                                context,
+                                'Email',
+                                profile.email,
+                                'email',
+                              ),
+                              onChangeLevel: () =>
+                                  _editLevel(context, profile.practiceLevel),
+                              onChangeDuration: () => _editField(
+                                context,
+                                'Session duration',
+                                profile.sessionDuration,
+                                'sessionDuration',
+                              ),
+                            ),
+                        ],
+                      );
+                    },
                   ),
                 ),
 
