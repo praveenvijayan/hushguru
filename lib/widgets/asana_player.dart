@@ -6,7 +6,9 @@ import '../theme/colors.dart';
 import '../theme/text_styles.dart';
 
 class AsanaPlayer extends StatefulWidget {
-  const AsanaPlayer({super.key});
+  final void Function(String asanaName, int durationSecs)? onSessionComplete;
+
+  const AsanaPlayer({super.key, this.onSessionComplete});
 
   @override
   State<AsanaPlayer> createState() => _AsanaPlayerState();
@@ -15,13 +17,16 @@ class AsanaPlayer extends StatefulWidget {
 class _AsanaPlayerState extends State<AsanaPlayer> {
   Asana? _selected;
 
+  void _handleBack() {
+    final asana = _selected!;
+    setState(() => _selected = null);
+    widget.onSessionComplete?.call(asana.name, asana.durationSecs);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_selected != null) {
-      return _AsanaVideoPlayer(
-        asana: _selected!,
-        onBack: () => setState(() => _selected = null),
-      );
+      return _AsanaVideoPlayer(asana: _selected!, onBack: _handleBack);
     }
     return _AsanaList(onSelect: (a) => setState(() => _selected = a));
   }

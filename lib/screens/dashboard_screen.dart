@@ -4,8 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/user_profile.dart';
+import '../models/practice_session.dart';
 import '../services/claude_service.dart';
 import '../services/permission_service.dart';
+import '../services/session_service.dart';
 import '../services/tts_service.dart';
 import '../services/user_profile_service.dart';
 import '../services/voice_service.dart';
@@ -15,11 +17,12 @@ import '../widgets/ambient_background.dart';
 import '../widgets/asana_player.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/particle_wave.dart';
+import '../widgets/progress_journal.dart';
 import '../widgets/recording_pulse.dart';
 import '../widgets/settings_letter.dart';
 import '../widgets/wordmark.dart';
 
-enum _DashboardOverlay { none, settings, asana }
+enum _DashboardOverlay { none, settings, asana, journal }
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -141,6 +144,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (selected != null && selected != current) {
       await UserProfileService.updateField(uid, 'practiceLevel', selected);
     }
+  }
+
+  Future<void> _recordSession(String asanaName, int durationSecs) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final session = PracticeSession(
+      id: '',
+      timestamp: DateTime.now(),
+      asanaName: asanaName,
+      durationSecs: durationSecs,
+      guideTranscript: _responseBuffer,
+    );
+    await SessionService.addSession(uid, session);
   }
 
   Future<void> _checkMicPermission() async {
@@ -378,7 +394,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 _OverlaySheet(
                   onClose: () =>
                       setState(() => _overlay = _DashboardOverlay.none),
-                  child: const AsanaPlayer(),
+                  child: AsanaPlayer(onSessionComplete: _recordSession),
+                ),
+
+              // ── Progress journal overlay ─────────────────────────────────
+              if (_overlay == _DashboardOverlay.journal)
+                _OverlaySheet(
+                  onClose: () =>
+                      setState(() => _overlay = _DashboardOverlay.none),
+                  child: ProgressJournal(
+                    uid: FirebaseAuth.instance.currentUser!.uid,
+                  ),
                 ),
 
               // ── Menu sheet ──────────────────────────────────────────────
@@ -392,6 +418,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   onAsana: () => setState(() {
                     _menuOpen = false;
                     _overlay = _DashboardOverlay.asana;
+                  }),
+                  onJournal: () => setState(() {
+                    _menuOpen = false;
+                    _overlay = _DashboardOverlay.journal;
                   }),
                 ),
             ],
@@ -543,18 +573,20 @@ class _DashboardMenu extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback onSettings;
   final VoidCallback onAsana;
+  final VoidCallback onJournal;
 
   const _DashboardMenu({
     required this.onClose,
     required this.onSettings,
     required this.onAsana,
+    required this.onJournal,
   });
 
   @override
   Widget build(BuildContext context) {
     final items = [
       ('Today\'s practice', onAsana),
-      ('Progress journal', null),
+      ('Progress journal', onJournal),
       ('Breathing library', null),
       ('Your settings', onSettings),
       ('About HushGuru', null),
