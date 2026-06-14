@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/permission_service.dart';
@@ -313,6 +314,12 @@ class _DashboardMenu extends StatelessWidget {
               label: 'Return to listening',
               onTap: onClose,
               color: HgColors.coral,
+            ),
+            const Divider(height: 1, color: Color(0x1A203C6B)),
+            _MenuItem(
+              label: 'Sign out',
+              onTap: () => FirebaseAuth.instance.signOut(),
+              color: HgColors.ink40,
             ),
           ],
         ),
