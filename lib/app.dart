@@ -1,9 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'screens/splash_screen.dart';
-import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
 import 'theme/theme.dart';
 
 class HushGuruApp extends StatelessWidget {
@@ -15,24 +15,30 @@ class HushGuruApp extends StatelessWidget {
       title: 'HushGuru',
       theme: buildHushGuruTheme(),
       debugShowCheckedModeBanner: false,
-      home: const _AppNavigator(),
+      home: const AppNavigator(),
     );
   }
 }
 
-class _AppNavigator extends StatefulWidget {
-  const _AppNavigator();
+/// Top-level auth router. [authStream] is exposed for widget tests only;
+/// production callers use the no-arg constructor.
+class AppNavigator extends StatefulWidget {
+  const AppNavigator({super.key, @visibleForTesting this.authStream});
+
+  final Stream<User?>? authStream;
 
   @override
-  State<_AppNavigator> createState() => _AppNavigatorState();
+  State<AppNavigator> createState() => _AppNavigatorState();
 }
 
-class _AppNavigatorState extends State<_AppNavigator> {
+class _AppNavigatorState extends State<AppNavigator> {
   bool _splashDone = false;
+  late final Stream<User?> _authStream;
 
   @override
   void initState() {
     super.initState();
+    _authStream = widget.authStream ?? FirebaseAuth.instance.authStateChanges();
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -50,7 +56,7 @@ class _AppNavigatorState extends State<_AppNavigator> {
       return const SplashScreen(key: ValueKey('splash'));
     }
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      stream: _authStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const SplashScreen(key: ValueKey('auth-check'));
