@@ -55,6 +55,24 @@ class UserProfileService {
     }
   });
 
+  static Future<void> createProfile({
+    required String uid,
+    required String displayName,
+    required String email,
+    required String practiceLevel,
+    required String sessionDuration,
+  }) => _col
+      .doc(uid)
+      .set(
+        UserProfile(
+          uid: uid,
+          displayName: displayName,
+          email: email,
+          practiceLevel: practiceLevel,
+          sessionDuration: sessionDuration,
+        ),
+      );
+
   static Stream<UserProfile?> stream(String uid) =>
       _col.doc(uid).snapshots().map((s) => s.data());
 
