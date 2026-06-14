@@ -6,6 +6,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../models/user_profile.dart';
 import '../models/practice_session.dart';
 import '../services/claude_service.dart';
+import '../services/notification_service.dart';
 import '../services/permission_service.dart';
 import '../services/session_service.dart';
 import '../services/tts_service.dart';
@@ -56,6 +57,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (user != null) {
       _profileStream = UserProfileService.stream(user.uid);
       _syncProfile(user);
+      NotificationService.init(user.uid);
     }
   }
 
@@ -144,6 +146,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (selected != null && selected != current) {
       await UserProfileService.updateField(uid, 'practiceLevel', selected);
     }
+  }
+
+  Future<void> _toggleReminders(bool current) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    await UserProfileService.updateField(uid, 'remindersEnabled', !current);
+  }
+
+  Future<void> _editPracticeTime(BuildContext context, String current) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final parts = current.split(':');
+    final hour = int.tryParse(parts.firstOrNull ?? '7') ?? 7;
+    final minute = int.tryParse(parts.elementAtOrNull(1) ?? '0') ?? 0;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: hour, minute: minute),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(
+            primary: HgColors.coral,
+            surface: HgColors.shell,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked == null) return;
+    final timeStr =
+        '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+    final offsetMinutes = DateTime.now().timeZoneOffset.inMinutes;
+    await UserProfileService.updateField(uid, 'practiceTime', timeStr);
+    await UserProfileService.updateField(uid, 'timezoneOffset', offsetMinutes);
   }
 
   Future<void> _recordSession(String asanaName, int durationSecs) async {
@@ -362,6 +397,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               email: profile.email,
                               practiceLevel: profile.practiceLevel,
                               sessionDuration: profile.sessionDuration,
+                              remindersEnabled: profile.remindersEnabled,
+                              practiceTime: profile.practiceTime,
                               onChangeName: () => _editField(
                                 context,
                                 'Name',
@@ -381,6 +418,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 'Session duration',
                                 profile.sessionDuration,
                                 'sessionDuration',
+                              ),
+                              onToggleReminders: () =>
+                                  _toggleReminders(profile.remindersEnabled),
+                              onChangePracticeTime: () => _editPracticeTime(
+                                context,
+                                profile.practiceTime,
                               ),
                             ),
                         ],
