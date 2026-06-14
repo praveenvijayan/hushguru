@@ -8,10 +8,14 @@ class SettingsLetter extends StatelessWidget {
   final String email;
   final String practiceLevel;
   final String sessionDuration;
+  final bool remindersEnabled;
+  final String practiceTime;
   final VoidCallback? onChangeName;
   final VoidCallback? onChangeEmail;
   final VoidCallback? onChangeLevel;
   final VoidCallback? onChangeDuration;
+  final VoidCallback? onToggleReminders;
+  final VoidCallback? onChangePracticeTime;
 
   const SettingsLetter({
     super.key,
@@ -19,10 +23,14 @@ class SettingsLetter extends StatelessWidget {
     this.email = 'praveen@example.com',
     this.practiceLevel = 'intermediate',
     this.sessionDuration = '20 minutes',
+    this.remindersEnabled = true,
+    this.practiceTime = '07:00',
     this.onChangeName,
     this.onChangeEmail,
     this.onChangeLevel,
     this.onChangeDuration,
+    this.onToggleReminders,
+    this.onChangePracticeTime,
   });
 
   TextSpan _tappable(String text, VoidCallback? onTap) {
@@ -57,6 +65,13 @@ class SettingsLetter extends StatelessWidget {
           _tappable(sessionDuration, onChangeDuration),
           _plain('. We send your reflections to '),
           _tappable(email, onChangeEmail),
+          _plain('.\n\nDaily reminders are '),
+          _tappable(
+            remindersEnabled ? 'enabled' : 'disabled',
+            onToggleReminders,
+          ),
+          _plain('. Your reminder arrives at '),
+          _tappable(practiceTime, onChangePracticeTime),
           _plain(
             '.\n\nBreath by breath, we are building something meaningful together.',
           ),

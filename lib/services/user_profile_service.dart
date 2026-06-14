@@ -76,7 +76,7 @@ class UserProfileService {
   static Stream<UserProfile?> stream(String uid) =>
       _col.doc(uid).snapshots().map((s) => s.data());
 
-  static Future<void> updateField(String uid, String field, String value) =>
+  static Future<void> updateField(String uid, String field, dynamic value) =>
       FirebaseFirestore.instance.collection('users').doc(uid).update({
         field: value,
       });
