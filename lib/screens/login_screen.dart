@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../theme/colors.dart';
 import '../theme/text_styles.dart';
 import '../widgets/hg_button.dart';
@@ -7,8 +8,21 @@ import '../widgets/hg_input.dart';
 import '../widgets/wordmark.dart';
 import 'register_screen.dart';
 
+typedef EmailSignIn = Future<void> Function(String email, String password);
+typedef GoogleSignInFlow = Future<void> Function();
+
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({
+    super.key,
+    @visibleForTesting this.signInWithEmail,
+    @visibleForTesting this.signInWithGoogle,
+  });
+
+  @visibleForTesting
+  final EmailSignIn? signInWithEmail;
+
+  @visibleForTesting
+  final GoogleSignInFlow? signInWithGoogle;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -27,6 +41,30 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _defaultEmailSignIn(String email, String password) {
+    return FirebaseAuth.instance.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+  }
+
+  Future<void> _defaultGoogleSignIn() async {
+    final signIn = GoogleSignIn.instance;
+    await signIn.initialize();
+    if (!signIn.supportsAuthenticate()) {
+      throw FirebaseAuthException(
+        code: 'google-sign-in-unavailable',
+        message: 'Google sign-in is not available on this platform.',
+      );
+    }
+
+    final account = await signIn.authenticate();
+    final credential = GoogleAuthProvider.credential(
+      idToken: account.authentication.idToken,
+    );
+    await FirebaseAuth.instance.signInWithCredential(credential);
+  }
+
   Future<void> _signIn() async {
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
@@ -39,14 +77,34 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
+      final signInWithEmail = widget.signInWithEmail ?? _defaultEmailSignIn;
+      await signInWithEmail(email, password);
       // authStateChanges in app.dart handles navigation;
       // profile creation happens in OnboardingScreen for new users.
     } on FirebaseAuthException catch (e) {
       setState(() => _error = e.message ?? 'Sign-in failed.');
+    } catch (_) {
+      setState(() => _error = 'Sign-in failed.');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final signInWithGoogle = widget.signInWithGoogle ?? _defaultGoogleSignIn;
+      await signInWithGoogle();
+      // authStateChanges in app.dart handles navigation after Firebase sign-in.
+    } on FirebaseAuthException catch (e) {
+      setState(() => _error = e.message ?? 'Google sign-in failed.');
+    } on GoogleSignInException catch (e) {
+      setState(() => _error = e.description ?? 'Google sign-in failed.');
+    } catch (_) {
+      setState(() => _error = 'Google sign-in failed.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -144,7 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
               HgButton(
                 label: 'Continue with Google',
                 variant: HgButtonVariant.outline,
-                onTap: () {},
+                onTap: _loading ? null : _signInWithGoogle,
               ),
 
               const SizedBox(height: 48),
