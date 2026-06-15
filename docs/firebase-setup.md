@@ -20,6 +20,18 @@ Firebase is wired manually (without the FlutterFire CLI).
 - Auth enabled: Email/Password, Google
 - Apple auth: deferred
 
+## Project MCP server
+
+Agents that support project-scoped MCP config can discover the Firebase MCP
+server from the repo-root `.mcp.json`. It runs:
+
+```bash
+npx --yes firebase-tools@15.20.0 -P hushguru-775f5 mcp
+```
+
+Keep this config in `.mcp.json` instead of user-global MCP settings so Firebase
+tools are available only when an agent is working in this repository.
+
 ## To regenerate `firebase_options.dart`
 
 If you add a new platform or rotate keys, re-run:
