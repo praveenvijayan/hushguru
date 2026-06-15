@@ -8,6 +8,7 @@ blocked_by:
 Full-screen AmbientBackground in stars mode with centred HgWordmark and a
 "breathe in…" caption at the bottom. Auto-advances to Login after 2.5 s.
 
+## Acceptance criteria
 - [ ] Splash renders gradient + star particles + wordmark with glow + tagline
 - [ ] "breathe in…" caption is visible at the bottom
 - [ ] Screen auto-transitions to Login after 2 500 ms

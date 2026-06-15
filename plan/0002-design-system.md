@@ -9,6 +9,7 @@ Create the colour palette, typography scale, and shared widgets (HgButton,
 HgInput, GlassCard, HgWordmark, AmbientBackground, ParticleWave) that all
 screens depend on.
 
+## Acceptance criteria
 - [ ] `lib/theme/colors.dart` exports `HgColors` with all palette tokens
 - [ ] `lib/theme/text_styles.dart` exports `HgText` using Jost font
 - [ ] `lib/widgets/hg_button.dart` renders primary / outline / white variants

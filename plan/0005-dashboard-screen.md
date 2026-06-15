@@ -9,6 +9,7 @@ blocked_by:
 AmbientBackground in wave mode, live status text, type-composer bar, and a
 menu sheet exposing Settings and Asana Player overlays.
 
+## Acceptance criteria
 - [ ] Wave particles animate continuously on the dashboard
 - [ ] Status text cycles through guide phrases
 - [ ] Type-composer bar accepts text input and triggers a status change

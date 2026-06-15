@@ -8,6 +8,7 @@ blocked_by:
 Request microphone access on iOS and Android so voice commands can be recorded
 on the Dashboard.
 
+## Acceptance criteria
 - [ ] `permission_handler` added to `pubspec.yaml`
 - [ ] iOS `Info.plist` contains `NSMicrophoneUsageDescription`
 - [ ] Android `AndroidManifest.xml` contains `RECORD_AUDIO` permission
