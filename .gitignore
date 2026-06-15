@@ -46,3 +46,4 @@ app.*.map.json
 
 # Local environment — never commit real tokens
 .env
+.ratchet
