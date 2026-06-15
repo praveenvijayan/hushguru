@@ -141,6 +141,7 @@ plan/
   0001-email-login.md           Worked example
 memory/
   USER.md                       Human-owned preferences (agent reads, never edits)
+  ARCHITECTURE.md               Coarse codebase map (generated; agent scopes reads with it)
   MEMORY.md                     Distilled knowledge cache (agent proposes via PR)
 scripts/
   plan-sync.mjs                 Deterministic plan→issue compiler (zero-dep, Node 20+)
@@ -168,14 +169,15 @@ side effects. Invoke as `/name` in Claude Code or Antigravity, or `/skills` /
 
 | Skill | When to run | What it does |
 |-------|-------------|--------------|
-| `/factory-init` | Once per repo | Creates the 9 state/priority labels, detects the stack and fills `GATES.md`, scaffolds `memory/`, and verifies the PAT. Idempotent. |
-| `/plan-issues` | After ideating | Turns the solidified idea into `plan/*.md` files (one per issue), then stops for review. Never creates issues directly. |
-| `/plan-sync` | While iterating on a plan | Runs `plan-sync.mjs` locally to compile `plan/*.md` into issues now, instead of waiting for the push-triggered workflow. |
+| `/ratchet-init` | Once per repo | Creates the 9 state/priority labels, detects the stack and fills `GATES.md`, scaffolds `memory/`, and verifies the PAT. Idempotent. |
+| `/ratchet-plan` | Planning, or reporting a found bug | Writes plan file(s) — one for a quick report, several for a full plan — onto the rolling planning branch and opens/updates the always-open planning PR, then stops. Never fixes or creates issues directly. |
+| `/ratchet-sync` | Only without the PR flow | Local/no-PR escape hatch: compiles working-tree `plan/*.md` into issues now. Normally unused — merging the planning PR does this. |
 | `/ratchet-next` | After a merge or review | Advances (sync main + next issue) on approval, or reworks the same PR on rejection. The heart of the continuous local loop. |
-| `/memory-compact` | Periodically (e.g. quarterly) | Prunes and dedupes `memory/MEMORY.md`, verifies issue/PR links, stops for review. |
+| `/ratchet-memory` | Periodically (e.g. quarterly) | Prunes and dedupes `memory/MEMORY.md`, verifies issue/PR links, stops for review. |
+| `/ratchet-map` | When structure drifts | Regenerates the coarse codebase map `memory/ARCHITECTURE.md` (language-agnostic), stops for review. |
 | `/ratchet-update` | To upgrade | Pulls newer framework files onto a review branch; never touches project-owned files. |
 
-### Detail: `/factory-init`
+### Detail: `/ratchet-init`
 
 Run once in a new repo. It is the only setup step beyond installing the skills.
 It creates labels with `--force` (idempotent), detects the project's package
@@ -186,7 +188,7 @@ scaffolds `memory/USER.md` and `memory/MEMORY.md`, and checks that the
 it never reads, writes, or prints a token). On a greenfield repo it leaves the
 default `GATES.md` and asks you to re-run once code exists.
 
-### Detail: `/plan-issues`
+### Detail: `/ratchet-plan`
 
 Decomposes the current conversation's idea into issue-sized units (one PR closes
 one issue), assigns sequential slugs continuing from the highest existing
@@ -204,7 +206,7 @@ See §8 — this is the routine that responds to a human's PR decision.
 
 | Workflow | Trigger | Effect |
 |----------|---------|--------|
-| `plan-sync` | push to `plan/**`, or manual | Compiles `plan/*.md` into issues, idempotently (dedup via a `<!-- plan-id -->` marker in each issue body). |
+| `plan-sync` | push to `plan/**` on `main` (i.e. planning-PR merge), or manual | Compiles `plan/*.md` into issues, idempotently (dedup via a `<!-- plan-id -->` marker). Scoped to `main` so the planning branch doesn't create issues early. |
 | `unblock-dependents` | `issues: closed` | Promotes every issue whose blockers are now all closed to `state:ready`. This re-feeds the queue. |
 | `sweep-stale-claims` | every 30 min, or manual | Returns `state:in-progress` issues with no branch commits for >2h to `state:ready` — a poor-man's lease expiry for crashed agents. |
 | `ratchet-run` | PR merged, or manual | OPTIONAL, off by default. Runs an agent in CI to work the next issue. Requires `RATCHET_AUTO=true` and an agent API key. Most users do not enable this — the local loop (§8) is the recommended path. |
@@ -244,7 +246,42 @@ an issue with any open blocker is `state:blocked`. The file owns issue *content*
 once an issue leaves `ready`/`draft`, sync stops touching it so live work is
 never clobbered.
 
+### Reporting something you found (bug, improvement, follow-up)
+
+When you spot a problem or an improvement, first decide which of two paths it is —
+they are handled differently on purpose:
+
+- **It blocks the PR you're reviewing** → that's a **rejection, not a new issue**.
+  Request Changes (or comment), and `/ratchet-next` reworks the same branch (§8).
+  Do not open an issue for it.
+- **It's separate or new work** (a bug in unrelated code, an improvement, anything
+  noticed after merge) → it becomes a **new plan-backed issue** and re-enters the
+  queue.
+
+For new work, **do not hand-create the issue on github.com.** Issues are compiled
+from `plan/*.md`, and a hand-made issue almost always lacks acceptance criteria —
+which parks it in `state:draft`, unpickable, forever. The disciplined path:
+
+1. **The front door is `/ratchet-plan <description>`** — e.g.
+   `/ratchet-plan google signin not working`. It writes a well-formed
+   `plan/*.md` (slug, priority, and a real `## Acceptance criteria` block derived
+   from the symptom) onto the rolling planning branch and opens/updates the
+   planning PR, then **stops** — it never edits code, fixes anything, or creates
+   issues directly, even if the fix is obvious or the report is urgent. The same
+   skill plans a whole idea into many files when you describe a feature.
+2. Review and **merge the planning PR**; `plan-sync` runs on `main` and creates the issue(s).
+3. The agent picks it up automatically on its next advance. **Priority is how you
+   triage:** a `priority:high` issue with no blockers jumps to the front of the
+   deterministic pick order, preempting lower-priority ready work — so an urgent
+   bug is worked next without any manual assignment.
+
+If you must create an issue directly on GitHub for speed, you own the contract by
+hand: include the `## Acceptance criteria` + `- [ ]` block in the body and apply
+`state:ready` plus a `priority:*` label yourself, or no agent will pick it. The
+label is not the fix — the criteria are.
+
 ### Memory (three tiers)
+
 
 Ratchet keeps a long-running project tractable without a vector database:
 
@@ -252,6 +289,9 @@ Ratchet keeps a long-running project tractable without a vector database:
 2. **Durable curated** — two committed files, read at the start of every issue:
    - `memory/USER.md` — human-owned preferences, conventions, glossary,
      "always/never" rules. The agent reads it and never edits it.
+   - `memory/ARCHITECTURE.md` — a coarse, machine-generated codebase map (layout,
+     components by role, conventions) the agent reads to scope its file reads.
+     Generated by `/ratchet-init`, refreshed by `/ratchet-map`; provisional.
    - `memory/MEMORY.md` — agent-proposed, human-approved distilled knowledge:
      decisions, gotchas, environment facts, patterns. It is a **cache, not a
      log** — each entry is one or two lines linking to the issue/PR that is its
@@ -262,7 +302,7 @@ Ratchet keeps a long-running project tractable without a vector database:
 
 The agent reads tiers 1–2 each issue, searches tier 3 when context is missing,
 and proposes `MEMORY.md` edits **inside its PR** — so memory changes are reviewed
-like code, never written silently. `/memory-compact` prunes the cache; because
+like code, never written silently. `/ratchet-memory` prunes the cache; because
 the real record is in tier 3, pruning never loses information.
 
 ---
@@ -342,7 +382,7 @@ Ratchet is published as a GitHub **template repository** and (for Claude Code) a
    ./setup.sh user-agents     # optional: ~/.agents/skills for all projects
    ```
    Codex and Antigravity read `.agents/skills/` directly with no setup.
-3. **Run `/factory-init`** in your agent — labels, gate detection into
+3. **Run `/ratchet-init`** in your agent — labels, gate detection into
    `GATES.md`, memory scaffold, PAT check.
 4. **Set the PAT** (see §10).
 
@@ -372,7 +412,7 @@ GITHUB_PAT=<your fine-grained PAT>
 
 Scope it to the repo with **Issues: Read/Write, Contents: Read/Write, Pull
 requests: Read/Write**. With pure human merges the default-token fallback works;
-the PAT makes the loop bulletproof against any automated close. `/factory-init`
+the PAT makes the loop bulletproof against any automated close. `/ratchet-init`
 checks presence (never the value). **Never commit a real token** — `.env` is
 gitignored; only `.env.example` is committed.
 
@@ -413,7 +453,7 @@ project-owned set:
 | Dotfolders (`.github`, `.agents`, `.claude`) missing after upload | macOS Finder hides dotfiles, so a browser drag-and-drop skips them | Upload via `git` (`cp -R src/. .` copies hidden files), never the web file picker |
 | Dependents don't become `state:ready` after a merge | `FACTORY_PAT` not set, so workflow-chaining is blocked | Set the `FACTORY_PAT` secret (§10) |
 | Agent's PR conflicts / re-does merged work | Branched from stale local `main` | The claim step now does `git pull --ff-only` first; ensure you're on the current framework (`/ratchet-update`) |
-| `/factory-init` doesn't create `GATES.md` | Legacy repo created before the GATES extraction; gates still inline in `AGENTS.md` | `/ratchet-update` to get the new `AGENTS.md`, then `/factory-init` to write `GATES.md` |
+| `/ratchet-init` doesn't create `GATES.md` | Legacy repo created before the GATES extraction; gates still inline in `AGENTS.md` | `/ratchet-update` to get the new `AGENTS.md`, then `/ratchet-init` to write `GATES.md` |
 | Agent pauses and asks "shall I start?" | Claim-step autonomy not in older `AGENTS.md`, or tool needs permission for `gh`/`git` | Update via `/ratchet-update`; grant the agent standing `Bash(gh:*)` / `Bash(git:*)` permission |
 | Watcher receives nothing | `gh webhook forward` needs the `cli/gh-webhook` extension and a running receiver | `ratchet-watch.sh` installs the extension and starts the receiver; check it's still in the foreground |
 | `ratchet-run` workflow does nothing | It is off by default | Set repo variable `RATCHET_AUTO=true` and an agent API key — only if you want CI execution |
@@ -425,19 +465,21 @@ project-owned set:
 ```
 # Setup (once per repo)
 ./setup.sh                         # place skills for all three tools
-/factory-init                      # labels, gates, memory, PAT check
+/ratchet-init                      # labels, gates, memory, PAT check
 gh secret set FACTORY_PAT          # enable workflow chaining
 
 # Plan
-/plan-issues                       # idea → plan/*.md  (then commit, or:)
-/plan-sync                         # compile plan/*.md → issues now
+/ratchet-plan [desc]               # plan, or report a found bug → rolling planning PR
+#   (review & MERGE the planning PR to create the issues)
+/ratchet-sync                      # local/no-PR escape hatch only
 
 # Run the loop (local)
 ./scripts/ratchet-watch.sh         # real-time merge/review signals
 /ratchet-next                      # advance after merge, or rework after reject
 
 # Maintain
-/memory-compact                    # prune memory/MEMORY.md
+/ratchet-memory                    # prune memory/MEMORY.md
+/ratchet-map                       # regenerate memory/ARCHITECTURE.md
 /ratchet-update [vX.Y.Z]           # upgrade the framework
 ```
 
