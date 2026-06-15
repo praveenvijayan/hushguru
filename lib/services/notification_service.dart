@@ -10,11 +10,26 @@ Future<void> _backgroundHandler(RemoteMessage message) async {
 class NotificationService {
   NotificationService._();
 
+  static bool _initialized = false;
+  static bool _fcmAvailable = false;
+
+  static bool get fcmAvailable => _fcmAvailable;
+
+  @visibleForTesting
+  static void resetForTest() {
+    _initialized = false;
+    _fcmAvailable = false;
+  }
+
   static void registerBackgroundHandler() {
     FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
   }
 
+  // Idempotent: subsequent calls return immediately without touching Firebase.
   static Future<void> init(String uid) async {
+    if (_initialized) return;
+    _initialized = true;
+
     final messaging = FirebaseMessaging.instance;
 
     final settings = await messaging.requestPermission(
@@ -38,15 +53,18 @@ class NotificationService {
       }
       if (apnsToken == null) {
         debugPrint(
-          '[NotificationService] APNS token unavailable after retries '
-          '(simulator or APNs error) — skipping FCM token.',
+          '[NotificationService] warn: APNS token unavailable after retries '
+          '(simulator or APNs error) — push notifications disabled.',
         );
         return;
       }
     }
 
     final token = await messaging.getToken();
-    if (token != null) await _storeToken(uid, token);
+    if (token != null) {
+      _fcmAvailable = true;
+      await _storeToken(uid, token);
+    }
 
     messaging.onTokenRefresh.listen(
       (token) => _storeToken(uid, token),

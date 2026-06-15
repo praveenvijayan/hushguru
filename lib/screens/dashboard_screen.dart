@@ -57,7 +57,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (user != null) {
       _profileStream = UserProfileService.stream(user.uid);
       _syncProfile(user);
-      NotificationService.init(user.uid);
+      _initNotifications(user.uid);
     }
   }
 
@@ -67,6 +67,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Unable to connect — please check your connection.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  Future<void> _initNotifications(String uid) async {
+    await NotificationService.init(uid);
+    if (!NotificationService.fcmAvailable && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Push notifications are unavailable on this device.'),
           duration: Duration(seconds: 4),
         ),
       );
