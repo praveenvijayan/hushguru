@@ -24,6 +24,27 @@ class NotificationService {
     );
     if (settings.authorizationStatus == AuthorizationStatus.denied) return;
 
+    // iOS/macOS: FCM requires the APNS token to be registered first.
+    // Retry briefly to cover the window between app launch and APNs registration.
+    // Simulators never receive APNS tokens — skip FCM gracefully if unavailable.
+    if (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS) {
+      String? apnsToken;
+      for (var i = 0; i < 3 && apnsToken == null; i++) {
+        apnsToken = await messaging.getAPNSToken();
+        if (apnsToken == null) {
+          await Future.delayed(const Duration(seconds: 1));
+        }
+      }
+      if (apnsToken == null) {
+        debugPrint(
+          '[NotificationService] APNS token unavailable after retries '
+          '(simulator or APNs error) — skipping FCM token.',
+        );
+        return;
+      }
+    }
+
     final token = await messaging.getToken();
     if (token != null) await _storeToken(uid, token);
 
