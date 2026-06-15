@@ -26,8 +26,11 @@ Agents that support project-scoped MCP config can discover the Firebase MCP
 server from the repo-root `.mcp.json`. It runs:
 
 ```bash
-npx --yes firebase-tools@15.20.0 -P hushguru-775f5 mcp
+npx --yes firebase-tools@15.20.0 mcp --dir .
 ```
+
+The active Firebase project is pinned by the tracked `.firebaserc` default alias:
+`hushguru-775f5`.
 
 Keep this config in `.mcp.json` instead of user-global MCP settings so Firebase
 tools are available only when an agent is working in this repository.
