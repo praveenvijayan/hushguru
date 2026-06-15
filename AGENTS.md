@@ -7,9 +7,12 @@ webhook service — events in GitHub advance the system, not agents.
 
 This manual is read natively by all three tools (Codex and Antigravity read
 `AGENTS.md`; Claude Code reads it too, and the thin `CLAUDE.md` points here as a
-backstop). It is 100% framework and project-agnostic — the only project-specific
-file is `GATES.md`, which `/ratchet-init` fills in for you. Everything in this
-manual is reusable as-is and safe to overwrite on update.
+backstop). It is 100% framework and project-agnostic — safe to overwrite on
+update. The project-specific files live elsewhere and the updater never touches
+them: `GATES.md` (human-owned config — your verification gates) and the
+`memory/` files (`USER.md` human-owned; `ARCHITECTURE.md` and `MEMORY.md`
+agent-generated and maintained through PRs). `/ratchet-init` sets these up for
+you. Everything in this manual is reusable as-is.
 
 ---
 
@@ -61,6 +64,14 @@ to you, it outranks all new work — finish what a human already reviewed.
 
 Never pick a blocked issue. Never skip the queue because something looks more
 interesting.
+
+If the query is empty (nothing `state:ready`), **do not stop with a bare
+"backlog drained."** Diagnose and report the real cause (this is what
+`/ratchet-status` does): how many issues are `state:draft` and which lack
+acceptance criteria; which are `state:blocked` and on what (a draft blocker is
+usually the root); whether a planning PR is open with unmerged plans; whether
+there are uncommitted plan files. End with the one action that unblocks the
+queue. "Drained" is almost always a planning-state problem, not an empty backlog.
 
 ### 2. Claim — atomic, via branch creation, from up-to-date main
 **Always branch from the latest `main`.** Before creating the branch, sync:
@@ -206,7 +217,7 @@ unattended execution, but it is off by default and not required.)
 
 
 The verification gates — what must pass before a PR opens — live in `GATES.md`,
-the one project-owned config file. Read `GATES.md` and run its commands in order,
+the project config file you hand-author. Read `GATES.md` and run its commands in order,
 fail-fast. `/ratchet-init` fills `GATES.md` in by detecting your stack; this
 manual never needs per-project edits.
 

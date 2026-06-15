@@ -126,7 +126,7 @@ identically everywhere.
 
 ```
 AGENTS.md                       Operating manual — the 7-step loop (100% framework)
-GATES.md                        The ONLY project-owned config: verification gates
+GATES.md                        Project config you hand-author: verification gates
 CLAUDE.md / GEMINI.md           One-line pointers to AGENTS.md
 DOCS.md                         This document
 README.md                       Overview and quick start
@@ -173,9 +173,11 @@ side effects. Invoke as `/name` in Claude Code or Antigravity, or `/skills` /
 | `/ratchet-plan` | Planning, or reporting a found bug | Writes plan file(s) — one for a quick report, several for a full plan — onto the rolling planning branch and opens/updates the always-open planning PR, then stops. Never fixes or creates issues directly. |
 | `/ratchet-sync` | Only without the PR flow | Local/no-PR escape hatch: compiles working-tree `plan/*.md` into issues now. Normally unused — merging the planning PR does this. |
 | `/ratchet-next` | After a merge or review | Advances (sync main + next issue) on approval, or reworks the same PR on rejection. The heart of the continuous local loop. |
+| `/ratchet-status` | When nothing seems ready | Read-only diagnosis of the queue: why nothing is pickable (drafts without criteria, blocked chains, unmerged planning PR) and the next action to unblock. |
 | `/ratchet-memory` | Periodically (e.g. quarterly) | Prunes and dedupes `memory/MEMORY.md`, verifies issue/PR links, stops for review. |
 | `/ratchet-map` | When structure drifts | Regenerates the coarse codebase map `memory/ARCHITECTURE.md` (language-agnostic), stops for review. |
 | `/ratchet-update` | To upgrade | Pulls newer framework files onto a review branch; never touches project-owned files. |
+| `/ratchet-uninstall` | To remove Ratchet | Removes framework files (keeps your `memory/` and plans by default) and offers GitHub-side cleanup; never deletes issues or branch protection. |
 
 ### Detail: `/ratchet-init`
 
@@ -421,8 +423,8 @@ gitignored; only `.env.example` is committed.
 ## 11. Updating Ratchet
 
 Repos created from the template do not auto-update — upgrading is a deliberate,
-zero-merge command, because `AGENTS.md` is 100% framework and the only
-project-owned config is `GATES.md`.
+zero-merge command, because `AGENTS.md` is 100% framework; the project-specific
+files (`GATES.md` plus everything under `memory/`) live outside it.
 
 ```
 /ratchet-update           # pull upstream main onto a review branch
@@ -436,8 +438,8 @@ project-owned set:
 
 | Framework (pulled, overwrite-safe) | Project-owned (never touched) |
 |------------------------------------|-------------------------------|
-| `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `DOCS.md` | `GATES.md` |
-| `.agents/`, `.claude/`, `plugin/`, `.claude-plugin/` | `memory/USER.md`, `memory/MEMORY.md` |
+| `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `DOCS.md` | `GATES.md` (config) |
+| `.agents/`, `.claude/`, `plugin/`, `.claude-plugin/` | `memory/` (`USER.md`, `ARCHITECTURE.md`, `MEMORY.md`) |
 | `.github/workflows/`, `scripts/*` | your `plan/*.md` issue files |
 | `.env.example` | `.env`, `README.md`, `LICENSE`, `.gitignore`, your code |
 
@@ -457,6 +459,7 @@ project-owned set:
 | Agent pauses and asks "shall I start?" | Claim-step autonomy not in older `AGENTS.md`, or tool needs permission for `gh`/`git` | Update via `/ratchet-update`; grant the agent standing `Bash(gh:*)` / `Bash(git:*)` permission |
 | Watcher receives nothing | `gh webhook forward` needs the `cli/gh-webhook` extension and a running receiver | `ratchet-watch.sh` installs the extension and starts the receiver; check it's still in the foreground |
 | `ratchet-run` workflow does nothing | It is off by default | Set repo variable `RATCHET_AUTO=true` and an agent API key — only if you want CI execution |
+| "Backlog drained" but you have work | Issues are `state:draft` (no acceptance criteria) or `state:blocked` on a draft, or the planning PR isn't merged so no issues exist yet | Run `/ratchet-status` — it names the exact cause and the next action. Usually: add `- [ ]` criteria to the plan files and merge the planning PR |
 
 ---
 
@@ -476,11 +479,13 @@ gh secret set FACTORY_PAT          # enable workflow chaining
 # Run the loop (local)
 ./scripts/ratchet-watch.sh         # real-time merge/review signals
 /ratchet-next                      # advance after merge, or rework after reject
+/ratchet-status                    # why is nothing ready? (read-only diagnosis)
 
 # Maintain
 /ratchet-memory                    # prune memory/MEMORY.md
 /ratchet-map                       # regenerate memory/ARCHITECTURE.md
 /ratchet-update [vX.Y.Z]           # upgrade the framework
+/ratchet-uninstall                 # remove Ratchet (files via PR; data kept by default)
 ```
 
 ---
