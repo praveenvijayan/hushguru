@@ -8,9 +8,18 @@ import '../widgets/hg_input.dart';
 import '../widgets/wordmark.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key, required this.user});
+  const OnboardingScreen({
+    super.key,
+    required this.uid,
+    required this.email,
+    @visibleForTesting this.signOut,
+  });
 
-  final User user;
+  final String uid;
+  final String email;
+
+  @visibleForTesting
+  final Future<void> Function()? signOut;
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -71,6 +80,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
+  Future<void> _escape() async {
+    if (widget.signOut != null) {
+      await widget.signOut!();
+    } else {
+      await FirebaseAuth.instance.signOut();
+    }
+    // Auth-state change in app.dart routes to LoginScreen automatically.
+  }
+
   Future<void> _save() async {
     setState(() {
       _saving = true;
@@ -78,9 +96,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
     try {
       await UserProfileService.createProfile(
-        uid: widget.user.uid,
+        uid: widget.uid,
         displayName: _nameCtrl.text.trim(),
-        email: widget.user.email ?? '',
+        email: widget.email,
         practiceLevel: _level,
         sessionDuration: _duration,
       );
@@ -244,7 +262,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 const SizedBox(height: 12),
               ],
               HgButton(label: _buttonLabel, onTap: _saving ? null : _advance),
-              const SizedBox(height: 36),
+              const SizedBox(height: 20),
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    _escape();
+                  },
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'Already have an account? ',
+                          style: HgText.caption(color: HgColors.ink60),
+                        ),
+                        TextSpan(
+                          text: 'Sign in',
+                          style: HgText.caption(color: HgColors.coral),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 28),
             ],
           ),
         ),

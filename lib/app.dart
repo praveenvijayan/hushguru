@@ -74,7 +74,8 @@ class _AppNavigatorState extends State<AppNavigator> {
               if (profileSnap.data == null) {
                 return OnboardingScreen(
                   key: const ValueKey('onboarding'),
-                  user: user,
+                  uid: user.uid,
+                  email: user.email ?? '',
                 );
               }
               return const DashboardScreen(key: ValueKey('dashboard'));
