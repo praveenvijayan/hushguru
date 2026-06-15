@@ -8,6 +8,7 @@ blocked_by:
 Shell-background login with HgWordmark, email + password HgInput fields,
 primary Sign-in button, outline Google button, and "New to HushGuru?" footer.
 
+## Acceptance criteria
 - [ ] Email + password fields render with coral focus border
 - [ ] Sign-in button calls `firebase_auth` `signInWithEmailAndPassword`
 - [ ] Google sign-in button triggers Google OAuth flow
