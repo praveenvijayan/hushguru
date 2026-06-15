@@ -1,13 +1,13 @@
 # GATES.md — Verification gates (run in order, fail-fast)
 
-<!-- auto-detected by /factory-init on 2026-06-13; verify before first run -->
+<!-- auto-detected by /ratchet-init on 2026-06-15; verify before first run -->
 
 Every gate must pass locally before you push. A red gate = stay on your branch.
 
 | # | Gate        | Command                                    | When to run           |
 |---|-------------|--------------------------------------------|-----------------------|
 | 1 | format      | `dart format --set-exit-if-changed .`      | Every PR              |
-| 2 | typecheck   | TODO: typecheck command                    | Every PR              |
+| 2 | typecheck   | `flutter analyze`                          | Every PR              |
 | 3 | lint        | `flutter analyze`                          | Every PR              |
 | 4 | test        | `flutter test`                             | Every PR              |
 | 5 | build       | `flutter build apk`                        | Every PR              |
