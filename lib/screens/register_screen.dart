@@ -5,16 +5,18 @@ import '../theme/text_styles.dart';
 import '../widgets/hg_button.dart';
 import '../widgets/hg_input.dart';
 import '../widgets/wordmark.dart';
-import 'register_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key, @visibleForTesting this.createAccount});
+
+  @visibleForTesting
+  final Future<void> Function(String email, String password)? createAccount;
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _loading = false;
@@ -27,26 +29,45 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _signIn() async {
+  bool _isValidEmail(String email) =>
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+
+  Future<void> _register() async {
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text;
+
     if (email.isEmpty || password.isEmpty) {
       setState(() => _error = 'Please enter your email and password.');
       return;
     }
+    if (!_isValidEmail(email)) {
+      setState(() => _error = 'Please enter a valid email address.');
+      return;
+    }
+    if (password.length < 8) {
+      setState(() => _error = 'Password must be at least 8 characters.');
+      return;
+    }
+
     setState(() {
       _loading = true;
       _error = null;
     });
+
     try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-      // authStateChanges in app.dart handles navigation;
-      // profile creation happens in OnboardingScreen for new users.
+      if (widget.createAccount != null) {
+        await widget.createAccount!(email, password);
+      } else {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
+      }
+      // Auth state change in app.dart routes to OnboardingScreen automatically.
     } on FirebaseAuthException catch (e) {
-      setState(() => _error = e.message ?? 'Sign-in failed.');
+      setState(() => _error = e.message ?? 'Registration failed.');
+    } catch (_) {
+      setState(() => _error = 'Registration failed.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -56,114 +77,60 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: HgColors.shell,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: IconThemeData(color: HgColors.navy),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 52),
-
-              // Wordmark
+              const SizedBox(height: 16),
               Center(child: HgWordmark(size: 17, color: HgColors.navy)),
-
               const SizedBox(height: 48),
-
-              // Heading
-              Text('Welcome back', style: HgText.h1()),
+              Text('Create account', style: HgText.h1()),
               const SizedBox(height: 6),
               Text(
-                'Your practice continues here.',
+                'Start your practice journey.',
                 style: HgText.body(color: HgColors.ink60),
               ),
-
               const SizedBox(height: 36),
-
-              // Email field
               HgInput(
                 label: 'Email address',
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
-
-              // Password field
               HgInput(
                 label: 'Password',
                 controller: _passwordCtrl,
                 obscure: true,
               ),
-
-              const SizedBox(height: 8),
-
-              // Forgot password
-              Align(
-                alignment: Alignment.centerRight,
-                child: GestureDetector(
-                  onTap: () {},
-                  child: Text(
-                    'Forgot password?',
-                    style: HgText.caption(color: HgColors.coral),
-                  ),
-                ),
-              ),
-
               if (_error != null) ...[
                 const SizedBox(height: 16),
                 Text(_error!, style: HgText.caption(color: HgColors.coral)),
               ],
-
               const SizedBox(height: 28),
-
-              // Sign in button
               HgButton(
-                label: _loading ? 'Signing in…' : 'Sign in',
-                onTap: _loading ? null : _signIn,
+                label: _loading ? 'Creating account…' : 'Create account',
+                onTap: _loading ? null : _register,
               ),
-
-              const SizedBox(height: 28),
-
-              // Divider
-              Row(
-                children: [
-                  Expanded(child: Divider(color: HgColors.ink12)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'or',
-                      style: HgText.caption(color: HgColors.ink40),
-                    ),
-                  ),
-                  Expanded(child: Divider(color: HgColors.ink12)),
-                ],
-              ),
-
-              const SizedBox(height: 28),
-
-              // Google sign-in
-              HgButton(
-                label: 'Continue with Google',
-                variant: HgButtonVariant.outline,
-                onTap: () {},
-              ),
-
               const SizedBox(height: 48),
-
-              // Footer
               Center(
                 child: GestureDetector(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const RegisterScreen()),
-                  ),
+                  onTap: () => Navigator.of(context).pop(),
                   child: RichText(
                     text: TextSpan(
                       children: [
                         TextSpan(
-                          text: 'New to HushGuru? ',
+                          text: 'Already have an account? ',
                           style: HgText.caption(color: HgColors.ink60),
                         ),
                         TextSpan(
-                          text: 'Create account',
+                          text: 'Sign in',
                           style: HgText.caption(color: HgColors.coral),
                         ),
                       ],
@@ -171,7 +138,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 28),
             ],
           ),
