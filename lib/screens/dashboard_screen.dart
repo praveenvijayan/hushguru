@@ -214,14 +214,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _checkMicPermission() async {
-    final granted = await PermissionService.requestMicrophone();
-    if (!granted && mounted) {
+    final status = await Permission.microphone.status;
+    if ((status.isDenied || status.isPermanentlyDenied) && mounted) {
       setState(() => _micDenied = true);
     }
   }
 
-  void _startRecording() {
-    if (_micDenied) return;
+  void _startRecording() async {
+    final granted = await PermissionService.requestMicrophone();
+    if (!mounted) return;
+    if (!granted) {
+      setState(() => _micDenied = true);
+      return;
+    }
     setState(() {
       _isRecording = true;
       _transcription = null;
