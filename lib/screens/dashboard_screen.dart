@@ -43,6 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _ttsBuffer = '';
   StreamSubscription<String>? _guideSubscription;
   Stream<UserProfile?>? _profileStream;
+  Timer? _statusTimer;
 
   final _voiceService = VoiceService();
   final _claudeService = ClaudeService();
@@ -53,6 +54,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     _checkMicPermission();
     _ttsService.init();
+    _statusTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!_isRecording && !_isResponding && mounted) {
+        setState(() => _statusIdx = (_statusIdx + 1) % _statusLines.length);
+      }
+    });
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _profileStream = UserProfileService.stream(user.uid);
@@ -87,6 +93,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
+    _statusTimer?.cancel();
     _guideSubscription?.cancel();
     _ttsService.stop();
     super.dispose();
@@ -282,7 +289,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     'Let your body soften.',
     'We begin in stillness.',
   ];
-  final int _statusIdx = 0;
+  int _statusIdx = 0;
 
   @override
   Widget build(BuildContext context) {
